@@ -1,5 +1,6 @@
 import type {
   FacebookSession,
+  FacebookCookie,
   SearchParams,
   SearchResult,
   MarketplaceListingDetail,
@@ -9,6 +10,7 @@ import {
   cookiesToHeader,
   getCookieValue,
 } from "./auth.js";
+import { extractCookiesViaCdp } from "./cdp-cookies.js";
 import {
   MARKETPLACE_SEARCH_DOC_ID,
   LOCATION_SEARCH_DOC_ID,
@@ -60,11 +62,28 @@ export class FacebookClient {
   }
 
   async initSession(): Promise<FacebookSession> {
-    const cookies = extractChromeCookies("facebook.com", this.chromeProfile);
+    // Chrome 127+ on Windows seals cookies with App-Bound Encryption, which a
+    // user-level DB read cannot decrypt. Ask Chrome for them over DevTools
+    // (CDP) instead; fall back to the direct DB read for older Chrome / macOS.
+    let cookies: FacebookCookie[] = await extractCookiesViaCdp(
+      "facebook.com",
+      this.chromeProfile
+    ).catch((err) => {
+      if (process.env.FB_MCP_DEBUG) {
+        console.error(`[client] CDP cookie extraction failed: ${err}`);
+      }
+      return [];
+    });
+
+    if (cookies.length === 0) {
+      cookies = extractChromeCookies("facebook.com", this.chromeProfile);
+    }
 
     if (cookies.length === 0) {
       throw new Error(
-        "No Facebook cookies found in Chrome. Make sure you're logged into Facebook in Chrome."
+        "No Facebook cookies found. Make sure you're logged into Facebook in Chrome " +
+          `(profile '${this.chromeProfile}') and that Chrome is fully closed so this ` +
+          "can drive it headless."
       );
     }
 
@@ -202,7 +221,19 @@ export class FacebookClient {
     }
 
     try {
-      return JSON.parse(text);
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      if (process.env.FB_MCP_DEBUG) {
+        console.error(
+          `[graphql] doc_id=${docId} topKeys=${Object.keys(parsed).join(",")}` +
+            (parsed.errors ? ` errors=${JSON.stringify(parsed.errors).slice(0, 400)}` : "")
+        );
+        if ("data" in parsed) {
+          console.error(
+            `[graphql] dataKeys=${Object.keys((parsed.data as object) ?? {}).join(",")}`
+          );
+        }
+      }
+      return parsed;
     } catch {
       throw new Error(`Failed to parse GraphQL response: ${text.slice(0, 200)}`);
     }

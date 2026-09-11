@@ -4,3 +4,5 @@ dist/
 .env.local
 *.db
 /tmp/
+
+# MCP dedicated Chrome profile lives in LOCALAPPDATA, nothing to ignore here

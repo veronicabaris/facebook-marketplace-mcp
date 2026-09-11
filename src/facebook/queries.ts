@@ -2,7 +2,7 @@
 // These are hashed operation identifiers that Facebook rotates on deploys.
 // Run `npm run capture-queries` to discover current values if these break.
 
-export const MARKETPLACE_SEARCH_DOC_ID = "7111939778879383";
+export const MARKETPLACE_SEARCH_DOC_ID = "27212616558440397";
 export const LOCATION_SEARCH_DOC_ID = "5585904654783609";
 
 // Listing detail uses a different approach — we extract the doc_id dynamically
@@ -24,50 +24,53 @@ export function buildSearchVariables(params: {
   limit: number;
   cursor?: string;
 }) {
+  // Shape captured live from CometMarketplaceSearchContentPaginationQuery.
+  // The Relay provider flag is a *required* variable — omitting it triggers
+  // "missing_required_variable_value" and an empty result.
+  const browseParams: Record<string, unknown> = {
+    commerce_enable_local_pickup: true,
+    commerce_enable_shipping: true,
+    commerce_search_and_rp_available: true,
+    commerce_search_and_rp_category_id: params.category ? [params.category] : [],
+    commerce_search_and_rp_condition: null,
+    commerce_search_and_rp_ctime_days: null,
+    filter_location_latitude: params.latitude,
+    filter_location_longitude: params.longitude,
+    filter_price_lower_bound:
+      params.minPrice != null ? Math.round(params.minPrice * 100) : 0,
+    filter_price_upper_bound:
+      params.maxPrice != null ? Math.round(params.maxPrice * 100) : 214748364700,
+    filter_radius_km: params.radiusKm,
+  };
+
   const variables: Record<string, unknown> = {
     count: params.limit,
+    cursor: params.cursor ?? null,
     params: {
       bqf: {
         callsite: "COMMERCE_MKTPLACE_WWW",
         query: params.query,
       },
-      browse_request_params: {
-        commerce_enable_local_pickup: true,
-        commerce_enable_shipping: true,
-        commerce_search_and_rp_available: true,
-        commerce_search_and_rp_condition: null,
-        commerce_search_and_rp_ctime_days: null,
-        filter_location_latitude: params.latitude,
-        filter_location_longitude: params.longitude,
-        filter_price_lower_bound: params.minPrice
-          ? params.minPrice * 100
-          : 0,
-        filter_price_upper_bound: params.maxPrice
-          ? params.maxPrice * 100
-          : 214748364700,
-        filter_radius_km: params.radiusKm,
-      },
+      browse_request_params: browseParams,
       custom_request_params: {
+        browse_context: null,
+        contextual_filters: [],
+        referral_code: null,
+        referral_ui_component: null,
+        saved_search_strid: null,
+        search_vertical: "C2C",
+        seo_url: null,
+        serp_landing_settings: {
+          virtual_category_id: "",
+        },
         surface: "SEARCH",
+        virtual_contextual_filters: [],
       },
     },
+    scale: 1,
+    __relay_internal__pv__GHLShouldChangeMarketplaceSponsoredDataFieldNamerelayprovider:
+      true,
   };
-
-  if (params.cursor) {
-    variables.cursor = params.cursor;
-  }
-
-  if (params.category) {
-    (
-      variables.params as Record<string, unknown>
-    ).browse_request_params = {
-      ...(
-        (variables.params as Record<string, unknown>)
-          .browse_request_params as Record<string, unknown>
-      ),
-      commerce_search_and_rp_category_id: params.category,
-    };
-  }
 
   return variables;
 }
