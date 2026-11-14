@@ -6,8 +6,6 @@ An MCP server that provides access to Facebook Marketplace via direct GraphQL AP
 
 Facebook's web client makes all Marketplace requests as `POST /api/graphql/` with a `doc_id` (query hash) and `variables`. This server replays those requests using your existing Facebook session cookies from Chrome.
 
-**Think of it like [pypush](https://github.com/JJTech0130/pypush) for iMessage — direct protocol, no browser.**
-
 ## Prerequisites
 
 - **macOS** (cookie extraction uses Keychain)
@@ -120,7 +118,7 @@ The server self-rate-limits to 3 requests/minute with random jitter to avoid det
 
 - **macOS only** for automatic cookie extraction
 - **Requires Chrome** with active Facebook session
-- **Facebook ToS** — automating Facebook violates their Terms of Service
+- **Facebook ToS** automating Facebook violates their Terms of Service
 - **Fragile** — `doc_id` values change on Facebook deploys
-- **Rate limited** — aggressive use may trigger CAPTCHAs or account flags
+- **Rate limited** aggressive use may trigger CAPTCHAs or account flags
 - **No write operations** — search/read only, no messaging or listing creation
